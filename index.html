@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Reto Tec — Juego de Cartas</title>
+<style>
+  :root{
+    --bg: #1b2430;
+    --board: #24303f;
+    --center: #2e3d4f;
+    --card-back: #3a4a5e;
+    --card-back-edge: #2a3646;
+    --accent: #ffcc4d;
+    --text: #f4f6f8;
+    --muted: #9fb0c3;
+    --p1: #ff6b6b;
+    --p2: #4dd0e1;
+    --p3: #82c91e;
+    --p4: #cc5de8;
+    --danger: #ff5252;
+    --ok: #51cf66;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg); color:var(--text);
+    font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  #app{
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center;
+    padding: 10px;
+    gap: 10px;
+  }
+  h1{
+    font-size: 1.3rem;
+    margin: 4px 0;
+    letter-spacing: 1px;
+    text-align:center;
+  }
+  .hidden{ display:none !important; }
+
+  /* ---------- SETUP SCREEN ---------- */
+  #setup{
+    width: 100%;
+    max-width: 480px;
+    background: var(--board);
+    border-radius: 16px;
+    padding: 20px;
+    display:flex;
+    flex-direction:column;
+    gap: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  #setup p.sub{ color:var(--muted); margin:0; font-size:0.9rem; text-align:center;}
+  .player-count-row{
+    display:flex; gap:8px; justify-content:center;
+  }
+  .count-btn{
+    flex:1;
+    padding: 14px 0;
+    border-radius: 10px;
+    border: 2px solid #3d4f66;
+    background: var(--center);
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight:bold;
+    cursor:pointer;
+  }
+  .count-btn.active{
+    border-color: var(--accent);
+    background: #40506a;
+    color: var(--accent);
+  }
+  .name-inputs{ display:flex; flex-direction:column; gap:10px; }
+  .name-inputs input{
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 2px solid #3d4f66;
+    background: #1e2733;
+    color: var(--text);
+    font-size: 1rem;
+  }
+  .name-inputs input:focus{ outline:none; border-color: var(--accent); }
+  #startBtn{
+    padding: 14px;
+    border-radius: 10px;
+    border:none;
+    background: var(--accent);
+    color: #1b2430;
+    font-weight:bold;
+    font-size: 1.05rem;
+    cursor:pointer;
+  }
+  #startBtn:active{ transform: scale(0.98); }
+
+  /* ---------- BOARD ---------- */
+  #boardWrap{
+    width:100%;
+    max-width: 620px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 10px;
+  }
+  #turnBanner{
+    width:100%;
+    text-align:center;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--center);
+    font-weight:bold;
+    font-size: 1rem;
+    border: 2px solid transparent;
+  }
+
+  .cross-grid{
+    display:grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-rows: 1fr 2fr 1fr;
+    gap: 6px;
+    width: 100%;
+    aspect-ratio: 1 / 1.05;
+    max-width: 560px;
+  }
+  .zone{
+    background: var(--board);
+    border-radius: 12px;
+    padding: 6px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap: 4px;
+    position:relative;
+    border: 3px solid transparent;
+    transition: border-color .2s;
+  }
+  .zone.top{ grid-column: 2; grid-row: 1; }
+  .zone.left{ grid-column: 1; grid-row: 2; }
+  .zone.right{ grid-column: 3; grid-row: 2; }
+  .zone.bottom{ grid-column: 2; grid-row: 3; }
+  .zone.center{ grid-column: 2; grid-row: 2; background: var(--center); }
+
+  .zone.active{
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(255,204,77,0.4);
+  }
+
+  .player-label{
+    font-size: 0.72rem;
+    font-weight:bold;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space:nowrap;
+    max-width: 100%;
+    overflow:hidden;
+    text-overflow: ellipsis;
+  }
+  .player-score{
+    font-size: 0.95rem;
+    font-weight:bold;
+    color: var(--accent);
+  }
+
+  .cards-row{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    width: 100%;
+  }
+  .zone.left .cards-row, .zone.right .cards-row{
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 1fr);
+  }
+
+  .mini-card{
+    aspect-ratio: 0.7/1;
+    background: var(--card-back);
+    border-radius: 6px;
+    border: 2px solid var(--card-back-edge);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 1rem;
+    cursor:pointer;
+    user-select:none;
+    transition: transform .15s, opacity .15s;
+    position:relative;
+  }
+  .mini-card::after{
+    content:"?";
+    color: rgba(255,255,255,0.5);
+    font-weight:bold;
+  }
+  .mini-card.used{
+    opacity: 0.15;
+    cursor: default;
+    pointer-events:none;
+  }
+  .mini-card.disabled{
+    opacity: 0.35;
+    cursor: default;
+    pointer-events:none;
+  }
+  .mini-card:not(.disabled):not(.used):active{
+    transform: scale(0.93);
+  }
+
+  /* center zone */
+  .center-piles{
+    display:flex;
+    gap: 10px;
+    align-items:center;
+    justify-content:center;
+  }
+  .pile{
+    width: 46px;
+    height: 64px;
+    border-radius: 6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    font-size: 0.65rem;
+    font-weight:bold;
+    text-align:center;
+    color: var(--muted);
+  }
+  .pile.deck{
+    background: var(--card-back);
+    border: 2px solid var(--card-back-edge);
+    color: #fff;
+  }
+  .pile.discard{
+    background: #1e2733;
+    border: 2px dashed #3d4f66;
+  }
+  #dice{
+    width: 48px;
+    height: 48px;
+    background: #fff;
+    color: #222;
+    border-radius: 10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 1.6rem;
+    font-weight:bold;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  }
+  #dice.rolling{
+    animation: shake 0.1s infinite;
+  }
+  @keyframes shake{
+    0%{ transform: rotate(0deg); }
+    50%{ transform: rotate(15deg); }
+    100%{ transform: rotate(-15deg); }
+  }
+  .deck-count{ font-size: 0.7rem; margin-top:2px; }
+
+  /* ---------- CHALLENGE MODAL ---------- */
+  #modalOverlay{
+    position: fixed; inset:0;
+    background: rgba(0,0,0,0.65);
+    display:flex; align-items:center; justify-content:center;
+    z-index: 50;
+    padding: 16px;
+  }
+  #challengeModal{
+    background: var(--board);
+    border-radius: 16px;
+    padding: 22px;
+    width: 100%;
+    max-width: 380px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 14px;
+    text-align:center;
+  }
+  .flip-card{
+    width: 140px;
+    height: 200px;
+    perspective: 1000px;
+  }
+  .flip-inner{
+    width:100%; height:100%;
+    position:relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+  }
+  .flip-inner.flipped{
+    transform: rotateY(180deg);
+  }
+  .flip-face{
+    position:absolute; inset:0;
+    backface-visibility:hidden;
+    border-radius: 12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 12px;
+  }
+  .flip-front{
+    background: var(--card-back);
+    border: 3px solid var(--card-back-edge);
+    font-size: 2.4rem;
+    color: rgba(255,255,255,0.4);
+    font-weight:bold;
+  }
+  .flip-back{
+    background: #fff;
+    color: #222;
+    transform: rotateY(180deg);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height:1.35;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .mult-badge{
+    display:inline-block;
+    background: var(--accent);
+    color:#1b2430;
+    font-size: 0.75rem;
+    font-weight:bold;
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+  .modal-actions{
+    display:flex;
+    gap: 10px;
+    width: 100%;
+  }
+  .modal-btn{
+    flex:1;
+    padding: 12px 0;
+    border-radius: 10px;
+    border:none;
+    font-weight:bold;
+    font-size: 0.95rem;
+    cursor:pointer;
+  }
+  .btn-accept{ background: var(--ok); color:#0b2b12; }
+  .btn-pass{ background: #565f6c; color:#fff; }
+  .modal-btn:active{ transform: scale(0.96); }
+
+  .dice-result{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 6px;
+  }
+  #modalDice{
+    width: 64px; height:64px;
+    background:#fff; color:#222;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 2.2rem; font-weight:bold;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  }
+  #modalDice.rolling{ animation: shake 0.08s infinite; }
+  .points-earned{
+    font-size: 1.3rem;
+    font-weight:bold;
+    color: var(--accent);
+  }
+  #modalContinueBtn{
+    padding: 12px 24px;
+    border-radius: 10px;
+    border:none;
+    background: var(--accent);
+    color:#1b2430;
+    font-weight:bold;
+    cursor:pointer;
+  }
+
+  /* ---------- GAME OVER ---------- */
+  #gameOverOverlay{
+    position:fixed; inset:0;
+    background: rgba(0,0,0,0.75);
+    display:flex; align-items:center; justify-content:center;
+    z-index: 60;
+    padding: 16px;
+  }
+  #gameOverBox{
+    background: var(--board);
+    border-radius: 16px;
+    padding: 26px;
+    max-width: 400px;
+    width:100%;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    gap: 14px;
+  }
+  #gameOverBox h2{ margin: 0; color: var(--accent); }
+  .rank-list{
+    list-style:none;
+    margin:0; padding:0;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .rank-item{
+    display:flex;
+    justify-content:space-between;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--center);
+    font-weight:bold;
+  }
+  .rank-item.winner{
+    background: var(--accent);
+    color: #1b2430;
+  }
+  #playAgainBtn{
+    padding: 12px;
+    border-radius: 10px;
+    border:none;
+    background: var(--accent);
+    color:#1b2430;
+    font-weight:bold;
+    cursor:pointer;
+  }
+
+  @media (max-width: 380px){
+    .mini-card::after{ font-size: 0.85rem; }
+    .player-label{ font-size:0.65rem; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>🎲 RETO TEC 🎲</h1>
+
+  <!-- SETUP SCREEN -->
+  <div id="setup">
+    <p class="sub">Elige el número de jugadores e introduce sus nombres</p>
+    <div class="player-count-row" id="countRow"></div>
+    <div class="name-inputs" id="nameInputs"></div>
+    <button id="startBtn">Empezar partida</button>
+  </div>
+
+  <!-- BOARD -->
+  <div id="boardWrap" class="hidden">
+    <div id="turnBanner"></div>
+    <div class="cross-grid">
+      <div class="zone top" id="zoneTop"></div>
+      <div class="zone left" id="zoneLeft"></div>
+      <div class="zone center" id="zoneCenter">
+        <div class="center-piles">
+          <div class="pile deck" id="pileDeck">
+            <span>MAZO</span>
+            <span class="deck-count" id="deckCount">0</span>
+          </div>
+          <div id="dice">🎲</div>
+          <div class="pile discard" id="pileDiscard">
+            <span>DESC.</span>
+            <span class="deck-count" id="discardCount">0</span>
+          </div>
+        </div>
+      </div>
+      <div class="zone right" id="zoneRight"></div>
+      <div class="zone bottom" id="zoneBottom"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHALLENGE MODAL -->
+<div id="modalOverlay" class="hidden">
+  <div id="challengeModal">
+    <div id="modalPlayerName" style="font-weight:bold;"></div>
+    <div class="flip-card">
+      <div class="flip-inner" id="flipInner">
+        <div class="flip-face flip-front">?</div>
+        <div class="flip-face flip-back" id="challengeText"></div>
+      </div>
+    </div>
+
+    <div id="modalChoice" class="modal-actions hidden">
+      <button class="modal-btn btn-accept" id="acceptBtn">✅ Hacer el reto</button>
+      <button class="modal-btn btn-pass" id="passBtn">🚫 Pasar</button>
+    </div>
+
+    <div id="modalDiceArea" class="dice-result hidden">
+      <div id="modalDice">🎲</div>
+      <div class="points-earned" id="pointsEarned"></div>
+    </div>
+
+    <div id="modalPassResult" class="hidden">
+      <div style="color:var(--muted);">Carta descartada. 0 puntos.</div>
+    </div>
+
+    <button id="modalContinueBtn" class="hidden">Continuar</button>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameOverOverlay" class="hidden">
+  <div id="gameOverBox">
+    <h2>🏆 Fin de la partida</h2>
+    <ul class="rank-list" id="rankList"></ul>
+    <button id="playAgainBtn">Jugar otra vez</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= RETOS DE EJEMPLO ================= */
+  // Array editable de retos: { text, mult } donde mult es 1, 2 o 3
+  const CHALLENGE_POOL = [
+    { text: "Canta el estribillo de tu canción favorita.", mult: 1 },
+    { text: "Haz 10 sentadillas seguidas.", mult: 1 },
+    { text: "Imita a un animal durante 15 segundos.", mult: 1 },
+    { text: "Cuenta un chiste malo sin reírte.", mult: 1 },
+    { text: "Baila 20 segundos sin música.", mult: 2 },
+    { text: "Habla con acento extranjero durante 2 rondas.", mult: 2 },
+    { text: "Haz una imitación de un compañero de mesa.", mult: 2 },
+    { text: "Recita el abecedario al revés.", mult: 3 },
+    { text: "Mantén el equilibrio a la pata coja 30 segundos.", mult: 2 },
+    { text: "Cuenta una historia inventada de 30 segundos sin dudar.", mult: 2 },
+    { text: "Haz 15 flexiones (o las que puedas con estilo).", mult: 2 },
+    { text: "Repite un trabalenguas 3 veces rápido.", mult: 3 },
+    { text: "Actúa como si fueras un robot durante 1 minuto.", mult: 1 },
+    { text: "Adivina qué está pensando otro jugador (y que lo confirme).", mult: 3 },
+    { text: "Haz una plancha (plank) durante 20 segundos.", mult: 2 },
+    { text: "Canta 'cumpleaños feliz' en otro idioma.", mult: 1 },
+    { text: "Camina como un pato por la sala.", mult: 1 },
+    { text: "Silba una canción y que los demás la adivinen.", mult: 2 },
+    { text: "Haz de presentador de telediario durante 20 segundos.", mult: 3 },
+    { text: "Aguanta la risa mientras otro jugador intenta hacerte reír (15s).", mult: 3 },
+  ];
+
+  const PLAYER_COLORS = ["var(--p1)", "var(--p2)", "var(--p3)", "var(--p4)"];
+  const ZONE_IDS = ["zoneBottom", "zoneLeft", "zoneTop", "zoneRight"]; // order for 1..4 players relative rotation
+  const CARDS_PER_PLAYER = 4;
+
+  /* ================= STATE ================= */
+  let state = {
+    numPlayers: 2,
+    players: [], // {name, score, cards: [challengeObj|null, ...], colorIdx}
+    deck: [],
+    discard: [],
+    currentPlayerIdx: 0,
+    gameOver: false,
+  };
+
+  /* ================= SETUP SCREEN ================= */
+  const countRow = document.getElementById("countRow");
+  const nameInputsDiv = document.getElementById("nameInputs");
+  const startBtn = document.getElementById("startBtn");
+
+  function renderCountButtons(){
+    countRow.innerHTML = "";
+    [2,3,4].forEach(n => {
+      const btn = document.createElement("button");
+      btn.className = "count-btn" + (n === state.numPlayers ? " active" : "");
+      btn.textContent = n;
+      btn.addEventListener("click", () => {
+        state.numPlayers = n;
+        renderCountButtons();
+        renderNameInputs();
+      });
+      countRow.appendChild(btn);
+    });
+  }
+
+  function renderNameInputs(){
+    nameInputsDiv.innerHTML = "";
+    for(let i=0;i<state.numPlayers;i++){
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = `Nombre jugador ${i+1}`;
+      input.maxLength = 16;
+      input.id = "nameInput" + i;
+      nameInputsDiv.appendChild(input);
+    }
+  }
+
+  renderCountButtons();
+  renderNameInputs();
+
+  startBtn.addEventListener("click", () => {
+    const players = [];
+    for(let i=0;i<state.numPlayers;i++){
+      const input = document.getElementById("nameInput" + i);
+      const val = (input.value || "").trim();
+      players.push({
+        name: val || `Jugador ${i+1}`,
+        score: 0,
+        cards: [null, null, null, null],
+        colorIdx: i,
+      });
+    }
+    startGame(players);
+  });
+
+  /* ================= GAME LOGIC ================= */
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function startGame(players){
+    state.players = players;
+    state.deck = shuffle(CHALLENGE_POOL);
+    state.discard = [];
+    state.currentPlayerIdx = 0;
+    state.gameOver = false;
+
+    // deal 4 cards to each player
+    state.players.forEach(p => {
+      for(let i=0;i<CARDS_PER_PLAYER;i++){
+        p.cards[i] = drawFromDeck();
+      }
+    });
+
+    document.getElementById("setup").classList.add("hidden");
+    document.getElementById("boardWrap").classList.remove("hidden");
+    renderBoard();
+  }
+
+  function drawFromDeck(){
+    if(state.deck.length === 0) return null;
+    return state.deck.pop();
+  }
+
+  function checkDeckExhausted(){
+    // Game ends when deck has no cards left to replenish a used slot.
+    // We check this proactively: if deck is empty, the game is effectively over once
+    // no more replacements can happen. We end game when deck.length === 0 AND
+    // a card is about to be drawn (i.e., after a slot opens up with none left).
+    return state.deck.length === 0;
+  }
+
+  /* ================= BOARD RENDER ================= */
+  const zoneEls = {
+    bottom: document.getElementById("zoneBottom"),
+    left: document.getElementById("zoneLeft"),
+    top: document.getElementById("zoneTop"),
+    right: document.getElementById("zoneRight"),
+  };
+  const positions = ["bottom","left","top","right"];
+
+  function renderBoard(){
+    const n = state.players.length;
+    // assign positions: player 0 = bottom (closest to holder), then rotate left/top/right
+    positions.forEach((pos, idx) => {
+      const el = zoneEls[pos];
+      el.innerHTML = "";
+      el.classList.remove("active");
+      if(idx >= n){
+        el.style.visibility = "hidden";
+        return;
+      }
+      el.style.visibility = "visible";
+      const player = state.players[idx];
+      const color = PLAYER_COLORS[player.colorIdx % PLAYER_COLORS.length];
+
+      const label = document.createElement("div");
+      label.className = "player-label";
+      label.style.background = color;
+      label.style.color = "#1b1b1b";
+      label.textContent = player.name;
+      el.appendChild(label);
+
+      const score = document.createElement("div");
+      score.className = "player-score";
+      score.textContent = player.score + " pts";
+      el.appendChild(score);
+
+      const cardsRow = document.createElement("div");
+      cardsRow.className = "cards-row";
+      player.cards.forEach((card, cardIdx) => {
+        const cardEl = document.createElement("div");
+        cardEl.className = "mini-card";
+        if(card === null){
+          cardEl.classList.add("used");
+        } else if(idx !== state.currentPlayerIdx){
+          cardEl.classList.add("disabled");
+        } else {
+          cardEl.style.borderColor = color;
+          cardEl.addEventListener("click", () => onCardClick(idx, cardIdx));
+        }
+        cardsRow.appendChild(cardEl);
+      });
+      el.appendChild(cardsRow);
+
+      if(idx === state.currentPlayerIdx){
+        el.classList.add("active");
+      }
+    });
+
+    document.getElementById("deckCount").textContent = state.deck.length;
+    document.getElementById("discardCount").textContent = state.discard.length;
+
+    const banner = document.getElementById("turnBanner");
+    const cur = state.players[state.currentPlayerIdx];
+    banner.textContent = `Turno de: ${cur.name} — elige una carta`;
+    banner.style.borderColor = PLAYER_COLORS[cur.colorIdx % PLAYER_COLORS.length];
+  }
+
+  /* ================= TURN FLOW ================= */
+  let pendingCard = null; // {playerIdx, cardIdx, challenge}
+
+  function onCardClick(playerIdx, cardIdx){
+    if(state.gameOver) return;
+    if(playerIdx !== state.currentPlayerIdx) return;
+    const challenge = state.players[playerIdx].cards[cardIdx];
+    if(!challenge) return;
+    pendingCard = { playerIdx, cardIdx, challenge };
+    openChallengeModal(challenge);
+  }
+
+  const modalOverlay = document.getElementById("modalOverlay");
+  const modalPlayerName = document.getElementById("modalPlayerName");
+  const flipInner = document.getElementById("flipInner");
+  const challengeText = document.getElementById("challengeText");
+  const modalChoice = document.getElementById("modalChoice");
+  const acceptBtn = document.getElementById("acceptBtn");
+  const passBtn = document.getElementById("passBtn");
+  const modalDiceArea = document.getElementById("modalDiceArea");
+  const modalDice = document.getElementById("modalDice");
+  const pointsEarned = document.getElementById("pointsEarned");
+  const modalPassResult = document.getElementById("modalPassResult");
+  const modalContinueBtn = document.getElementById("modalContinueBtn");
+
+  function openChallengeModal(challenge){
+    const player = state.players[pendingCard.playerIdx];
+    modalPlayerName.textContent = player.name;
+    modalPlayerName.style.color = PLAYER_COLORS[player.colorIdx % PLAYER_COLORS.length];
+
+    const multLabel = challenge.mult > 1 ? `<div class="mult-badge">x${challenge.mult} PUNTOS</div>` : "";
+    challengeText.innerHTML = `<div>${challenge.text}</div>${multLabel}`;
+
+    flipInner.classList.remove("flipped");
+    modalChoice.classList.add("hidden");
+    modalDiceArea.classList.add("hidden");
+    modalPassResult.classList.add("hidden");
+    modalContinueBtn.classList.add("hidden");
+
+    modalOverlay.classList.remove("hidden");
+
+    // trigger flip animation shortly after showing
+    setTimeout(() => {
+      flipInner.classList.add("flipped");
+      setTimeout(() => {
+        modalChoice.classList.remove("hidden");
+      }, 350);
+    }, 200);
+  }
+
+  acceptBtn.addEventListener("click", () => {
+    modalChoice.classList.add("hidden");
+    modalDiceArea.classList.remove("hidden");
+    rollDice();
+  });
+
+  passBtn.addEventListener("click", () => {
+    modalChoice.classList.add("hidden");
+    modalPassResult.classList.remove("hidden");
+    modalContinueBtn.classList.remove("hidden");
+    resolveTurn(0, true);
+  });
+
+  function rollDice(){
+    modalDice.classList.add("rolling");
+    modalDice.textContent = "🎲";
+    let ticks = 0;
+    const maxTicks = 12;
+    const interval = setInterval(() => {
+      const val = 1 + Math.floor(Math.random()*6);
+      modalDice.textContent = val;
+      ticks++;
+      if(ticks >= maxTicks){
+        clearInterval(interval);
+        modalDice.classList.remove("rolling");
+        const finalRoll = 1 + Math.floor(Math.random()*6);
+        modalDice.textContent = finalRoll;
+        const earned = finalRoll * pendingCard.challenge.mult;
+        pointsEarned.textContent = `+${earned} puntos (${finalRoll} x${pendingCard.challenge.mult})`;
+        modalContinueBtn.classList.remove("hidden");
+        resolveTurn(earned, false);
+      }
+    }, 80);
+  }
+
+  function resolveTurn(pointsToAdd, wasPassed){
+    const { playerIdx, cardIdx, challenge } = pendingCard;
+    const player = state.players[playerIdx];
+
+    player.score += pointsToAdd;
+
+    // remove card from player's hand
+    player.cards[cardIdx] = null;
+    if(wasPassed){
+      state.discard.push(challenge);
+    }
+    // else: accepted challenge card is simply removed (not tracked further)
+
+    // draw replacement
+    const newCard = drawFromDeck();
+    player.cards[cardIdx] = newCard; // null if deck empty -> slot stays empty
+  }
+
+  modalContinueBtn.addEventListener("click", () => {
+    modalOverlay.classList.add("hidden");
+    advanceTurnOrEnd();
+  });
+
+  function advanceTurnOrEnd(){
+    // End condition: deck is empty AND at least one slot across all players is empty
+    // (meaning the deck could not be replenished)
+    const deckEmpty = state.deck.length === 0;
+    const anyEmptySlot = state.players.some(p => p.cards.some(c => c === null));
+
+    if(deckEmpty && anyEmptySlot){
+      endGame();
+      return;
+    }
+
+    state.currentPlayerIdx = (state.currentPlayerIdx + 1) % state.players.length;
+    renderBoard();
+  }
+
+  /* ================= GAME OVER ================= */
+  function endGame(){
+    state.gameOver = true;
+    renderBoard();
+    const overlay = document.getElementById("gameOverOverlay");
+    const rankList = document.getElementById("rankList");
+    rankList.innerHTML = "";
+
+    const sorted = state.players.slice().sort((a,b) => b.score - a.score);
+    const maxScore = sorted[0].score;
+
+    sorted.forEach((p, i) => {
+      const li = document.createElement("li");
+      li.className = "rank-item" + (p.score === maxScore ? " winner" : "");
+      const medal = i === 0 ? "🏆 " : `${i+1}. `;
+      li.innerHTML = `<span>${medal}${p.name}</span><span>${p.score} pts</span>`;
+      rankList.appendChild(li);
+    });
+
+    overlay.classList.remove("hidden");
+  }
+
+  document.getElementById("playAgainBtn").addEventListener("click", () => {
+    document.getElementById("gameOverOverlay").classList.add("hidden");
+    document.getElementById("boardWrap").classList.add("hidden");
+    document.getElementById("setup").classList.remove("hidden");
+    renderCountButtons();
+    renderNameInputs();
+  });
+
+})();
+</script>
+</body>
+</html>
