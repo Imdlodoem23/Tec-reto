@@ -571,6 +571,13 @@
     padding: 3px 12px;
     border-radius: 20px;
   }
+  .flip-back.bonus-card{
+    background: linear-gradient(160deg, #fff8e1, #ffe08a);
+  }
+  .mult-badge.bonus-badge{
+    background: linear-gradient(90deg, #ffd873, #ff9f43);
+    box-shadow: 0 0 12px rgba(255,159,67,0.6);
+  }
   .modal-actions{
     display:flex;
     gap: 10px;
@@ -840,6 +847,7 @@
           <li>🚫 <strong>Pasar</strong> → la carta va al descarte y no ganas puntos.</li>
         </ul>
       </li>
+      <li>🎁 <strong>Cartas comodín:</strong> algunas cartas doradas especiales te libran del reto por completo — se tira el dado automáticamente y los puntos son 100% seguros, sin decidir ni arriesgar nada.</li>
       <li>La carta usada se retira de tu lado y automáticamente robas una nueva del mazo para volver a tener 4.</li>
       <li>El turno pasa al siguiente jugador, en orden rotativo (mira la tira de avatares).</li>
       <li><strong>Fin de la partida:</strong> cuando el mazo se queda sin cartas para reponer. ¡Gana quien tenga más puntos!</li>
@@ -915,6 +923,15 @@
     { text: "Inventa un saludo secreto y enséñaselo a otro jugador.", mult: 1 },
     { text: "Haz de mimo e interpreta una emoción que elijan los demás.", mult: 2 },
     { text: "Cuenta una anécdota graciosa en menos de 30 segundos.", mult: 1 },
+
+    // Cartas comodín: te saltas el reto por completo. No hay que aceptar
+    // ni pasar — se tira el dado automáticamente y los puntos son 100%
+    // seguros (dado x multiplicador), sin ningún riesgo.
+    { text: "🎁 ¡Carta especial! Te saltas el reto: tira el dado y suma los puntos directos.", mult: 1, bonus: true },
+    { text: "🍀 Golpe de suerte: sin reto, sin riesgo. Tira el dado y gana esos puntos.", mult: 2, bonus: true },
+    { text: "✨ Comodín dorado: puntos garantizados según el dado, sin hacer nada más.", mult: 2, bonus: true },
+    { text: "🎉 ¡Premio sorpresa! Te libras del reto y tiras el dado por puntos directos.", mult: 3, bonus: true },
+    { text: "🃏 Carta comodín: no hay reto que hacer, solo tira el dado y suma.", mult: 1, bonus: true },
   ];
 
   const PLAYER_COLORS = ["var(--p1)", "var(--p2)", "var(--p3)", "var(--p4)"];
@@ -1216,8 +1233,11 @@
     modalPlayerName.textContent = `${AVATARS[player.colorIdx % AVATARS.length]} ${player.name}`;
     modalPlayerName.style.color = PLAYER_COLORS[player.colorIdx % PLAYER_COLORS.length];
 
-    const multLabel = challenge.mult > 1 ? `<div class="mult-badge">x${challenge.mult} PUNTOS</div>` : "";
-    challengeText.innerHTML = `<div>${challenge.text}</div>${multLabel}`;
+    const badge = challenge.bonus
+      ? `<div class="mult-badge bonus-badge">🎁 CARTA ESPECIAL · x${challenge.mult}</div>`
+      : (challenge.mult > 1 ? `<div class="mult-badge">x${challenge.mult} PUNTOS</div>` : "");
+    challengeText.innerHTML = `<div>${challenge.text}</div>${badge}`;
+    challengeText.classList.toggle("bonus-card", !!challenge.bonus);
 
     flipInner.classList.remove("flipped");
     modalChoice.classList.add("hidden");
@@ -1232,7 +1252,14 @@
     setTimeout(() => {
       flipInner.classList.add("flipped");
       setTimeout(() => {
-        modalChoice.classList.remove("hidden");
+        if(challenge.bonus){
+          // Carta comodín: no hay decisión que tomar, se tira el dado
+          // automáticamente y los puntos van garantizados.
+          modalDiceArea.classList.remove("hidden");
+          rollDice();
+        } else {
+          modalChoice.classList.remove("hidden");
+        }
       }, 350);
     }, 200);
   }
